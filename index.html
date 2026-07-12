@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RADAR MATRIX</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --surface-color: #0d0d0d;
+            --surface-accent: #141414;
+            --border-color: #1f1f1f;
+            --border-focus: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #525252;
+            --accent-glow: rgba(0, 255, 204, 0.15);
+            --radar-green: #00ffcc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-secondary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(20, 20, 20, 0.5) 0%, transparent 50%),
+                linear-gradient(rgba(255, 255, 255, 0.002) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.002) 1px, transparent 1px);
+            background-size: 100% 100%, 20px 20px, 20px 20px;
+        }
+
+        /* --- Premium InexUI Style Header --- */
+        header {
+            width: 100%;
+            max-width: 1100px;
+            padding: 30px 24px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .system-status {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--radar-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--radar-green);
+        }
+
+        /* --- Central InexUI Search Base --- */
+        .search-container {
+            width: 100%;
+            max-width: 1100px;
+            padding: 60px 24px 40px 24px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .hero-text {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            margin-bottom: 32px;
+        }
+
+        .hero-text span {
+            color: var(--text-muted);
+        }
+
+        .search-form-wrapper {
+            display: flex;
+            max-width: 640px;
+            margin: 0 auto;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 6px;
+            border-radius: 8px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .search-form-wrapper:focus-within {
+            border-color: var(--border-focus);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        .search-bar {
+            flex: 1;
+            padding: 14px 18px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .search-bar::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-btn {
+            background-color: var(--text-primary);
+            color: var(--bg-color);
+            border: none;
+            padding: 0 24px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .search-btn:hover {
+            background-color: #e5e5e5;
+        }
+
+        /* --- Results Panel Base --- */
+        .results-container {
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 80px;
+        }
+
+        .flight-row {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .flight-row:hover {
+            border-color: var(--border-focus);
+            background-color: var(--surface-accent);
+        }
+
+        .row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .callsign-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .airline-tag {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* --- AirNav Inspired Detailed Information Grid --- */
+        .expanded-details {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            display: none;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .expanded-details.active {
+            display: block;
+        }
+
+        /* Main structure Split */
+        .airnav-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .airnav-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Graphic/Image Canvas Showcase */
+        .media-canvas {
+            position: relative;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background-color: #0a0a0a;
+            height: 280px;
+        }
+
+        .aircraft-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .media-overlay-details {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.95));
+            padding: 24px 20px 20px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .overlay-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .overlay-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Information Grid Systems */
+        .airnav-info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .airline-logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+            margin-bottom: 4px;
+        }
+
+        /* Dedicated Flight & Route Block */
+        .route-banner {
+            background-color: var(--surface-accent);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .route-endpoint {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .route-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .route-city {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .route-arrow {
+            color: var(--text-muted);
+            font-size: 20px;
+        }
+
+        /* Data Matrix Grid */
+        .data-matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .matrix-cell {
+            background-color: rgba(255,255,255,0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 16px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 400;
+        }
+
+        .telemetry-val {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .region-highlight {
+            color: var(--radar-green);
+            font-weight: 500;
+        }
+
+        /* Map Component Styling */
+        .flight-map {
+            width: 100%;
+            height: 280px;
+            background-color: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            z-index: 1;
+            margin-top: 12px;
+        }
+
+        /* Map Dark Aesthetic Filters */
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+
+        .state-message {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px 0;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-wrapper">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21,16V14L13,9V3.5A1.5,1.5 0 0,0 11.5,2A1.5,1.5 0 0,0 10,3.5V9L2,14V16L10,13.5V19L8,20.5V22L11.5,21L15,22V20.5L13,19V13.5L21,16Z" fill="#ffffff"/>
+            </svg>
+            <div class="brand-title">Radar Matrix</div>
+        </div>
+        <div class="system-status">
+            <div class="status-dot"></div>
+            <span>Matrix Core Online</span>
+        </div>
+    </header>
+
+    <div class="search-container">
+        <div class="hero-text">Search airspace. <span>Examine telemetry.</span></div>
+        <div class="search-form-wrapper">
+            <input type="text" id="search-bar" class="search-bar" placeholder="Enter Exact Callsign (e.g., UAL123)..." oninput="executeLiveSearch()">
+            <button type="button" class="search-btn" onclick="executeSearch()">Scan</button>
+        </div>
+    </div>
+
+    <div id="results" class="results-container">
+        <div class="state-message">System standing by for telemetry query...</div>
+    </div>
+
+    <script>
+        let debounceTimer;
+
+        // Form submission helper for pressing Enter key inside search bar
+        document.getElementById('search-bar').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                executeSearch();
+            }
+        });
+
+        // Live Recommendations
+        function executeLiveSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                performQuery();
+            }, 350);
+        }
+
+        // Manual Submit Button Focus
+        function executeSearch() {
+            clearTimeout(debounceTimer);
+            performQuery();
+        }
+
+        async function performQuery() {
+            const query = document.getElementById('search-bar').value.trim();
+            const resultsDiv = document.getElementById('results');
+
+            if (query.length === 0) {
+                resultsDiv.innerHTML = '<div class="state-message">System standing by for telemetry query...</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="state-message">Scanning global airspace signatures...</div>';
+
+            try {
+                const response = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
+                resultsDiv.innerHTML = '';
+
+                if (response.data.length === 0) {
+                    resultsDiv.innerHTML = '<div class="state-message">No exact active signatures match query.</div>';
+                    return;
+                }
+
+                response.data.forEach(flight => {
+                    const row = document.createElement('div');
+                    row.className = 'flight-row';
+                    
+                    const headerHtml = `
+                        <div class="row-header">
+                            <div>
+                                <span class="callsign-tag">${flight.flightNumber || 'UNKNOWN'}</span>
+                                <span class="airline-tag">${flight.airline} &middot; ${flight.country}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="info-label">FIR / UIR</span>
+                                <span class="telemetry-val region-highlight" style="font-size: 14px;">${flight.firArea || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="expanded-details" id="details-${flight.icao24}"></div>
+                    `;
+                    row.innerHTML = headerHtml;
+                    
+                    row.onclick = () => toggleDetails(flight);
+                    resultsDiv.appendChild(row);
+                });
+            } catch (err) {
+                resultsDiv.innerHTML = '<div class="state-message">Telemetry connection failed.</div>';
+            }
+        }
+
+        async function toggleDetails(flight) {
+            const detailsDiv = document.getElementById(`details-${flight.icao24}`);
+            
+            if (detailsDiv.classList.contains('active')) {
+                detailsDiv.classList.remove('active');
+                return;
+            }
+
+            document.querySelectorAll('.expanded-details').forEach(el => {
+                el.classList.remove('active');
+                el.innerHTML = '';
+            });
+            
+            detailsDiv.classList.add('active');
+            detailsDiv.innerHTML = '<div class="state-message" style="padding:20px 0;">Acquiring tactical & visual data streams...</div>';
+
+            try {
+                let aircraftType = 'Restricted / Unknown';
+                let registration = 'N/A';
+                let age = 'N/A';
+                let engineInfo = 'N/A';
+                let routeOrigin = 'N/A';
+                let routeOriginCity = '';
+                let routeDest = 'N/A';
+                let routeDestCity = '';
+                let airlineLogoCode = null;
+                let imageUrl = null;
+                let imageCopyright = '';
+
+                // Source 1: Planespotters for Photo, Registration, and Airframe Type
+                try {
+                    const photoRes = await axios.get(`https://api.planespotters.net/pub/photos/hex/${flight.icao24}`);
+                    if (photoRes.data && photoRes.data.photos && photoRes.data.photos.length > 0) {
+                        const pic = photoRes.data.photos[0];
+                        imageUrl = pic.thumbnail_large.src;
+                        aircraftType = pic.type || aircraftType;
+                        registration = pic.registration || registration;
+                        imageCopyright = pic.photographer ? `© ${pic.photographer}` : '© Planespotters.net';
+                    }
+                } catch(e) { console.warn("Photo & basic aircraft fetch failed"); }
+
+                // Source 2: Planespotters Airframe Web Scraping via Proxy for Age & Engine details (replaces deprecated Hexdb)
+                try {
+                    const psUrl = `https://www.planespotters.net/hex/${flight.icao24}`;
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(psUrl)}`;
+                    const psRes = await axios.get(proxyUrl);
+                    
+                    if (psRes.data && psRes.data.contents) {
+                        const html = psRes.data.contents;
+                        
+                        // Parse Engine Configuration
+                        const engineMatch = html.match(/>\s*Engines?\s*<\/(?:div|dt|span)>\s*<(?:div|dd|span)[^>]*>\s*([^<]+)\s*<\/(?:div|dd|span)>/i);
+                        if (engineMatch && engineMatch[1]) {
+                            engineInfo = engineMatch[1].trim();
+                        }
+
+                        // Parse Service Age
+                        const ageMatch = html.match(/>\s*(?:Airframe )?Age\s*<\/(?:div|dt|span)>\s*<(?:div|dd|span)[^>]*>\s*([^<]+)\s*<\/(?:div|dd|span)>/i);
+                        if (ageMatch && ageMatch[1] && age === 'N/A') {
+                            age = ageMatch[1].trim();
+                        }
+                    }
+                } catch(e) { console.warn("Aircraft age & engine fetch failed"); }
+
+                // Source 3: Flightradar24 via Proxy for Live Route Information, Cities, and Airline Logo data
+                if (flight.flightNumber) {
+                    try {
+                        const fr24Url = `https://api.flightradar24.com/common/v1/flight/list.json?query=${flight.flightNumber.trim()}`;
+                        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(fr24Url)}`;
+                        const routeRes = await axios.get(proxyUrl);
+                        
+                        if (routeRes.data && routeRes.data.contents) {
+                            const data = JSON.parse(routeRes.data.contents);
+                            if (data.result && data.result.response && data.result.response.data && data.result.response.data.length > 0) {
+                                const flightData = data.result.response.data[0];
+                                
+                                // Origin details
+                                if (flightData.airport && flightData.airport.origin) {
+                                    routeOrigin = flightData.airport.origin.code?.iata || 'N/A';
+                                    routeOriginCity = flightData.airport.origin.position?.region?.city || '';
+                                }
+                                
+                                // Destination details
+                                if (flightData.airport && flightData.airport.destination) {
+                                    routeDest = flightData.airport.destination.code?.iata || 'N/A';
+                                    routeDestCity = flightData.airport.destination.position?.region?.city || '';
+                                }
+
+                                // Airline logo identifier
+                                if (flightData.airline && flightData.airline.code) {
+                                    airlineLogoCode = flightData.airline.code.iata || flightData.airline.code.icao;
+                                }
+
+                                // Backup Age check from FR24 Live Data in case Planespotters didn't have it
+                                const flightId = flightData.identification?.id;
+                                if (flightId && age === 'N/A') {
+                                    try {
+                                        const detailUrl = `https://data-live.flightradar24.com/clickhandler/?version=1.5&flight=${flightId}`;
+                                        const detailProxy = `https://api.allorigins.win/get?url=${encodeURIComponent(detailUrl)}`;
+                                        const detailRes = await axios.get(detailProxy);
+                                        if (detailRes.data && detailRes.data.contents) {
+                                            const detailData = JSON.parse(detailRes.data.contents);
+                                            if (detailData.aircraft && detailData.aircraft.age) {
+                                                age = detailData.aircraft.age + ' Years';
+                                            }
+                                        }
+                                    } catch(e) {}
+                                }
+                            }
+                        }
+                    } catch(e) { console.warn("Route fetch failed"); }
+                }
+
+                // Construct Image Component
+                let photoHtml = '';
+                if (imageUrl) {
+                    photoHtml = `
+                        <div class="media-canvas">
+                            <img src="${imageUrl}" class="aircraft-photo" alt="Aircraft">
+                            <div class="media-overlay-details">
+                                <div>
+                                    <div class="overlay-title">${registration}</div>
+                                    <div class="overlay-subtitle">${aircraftType}</div>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono';">${imageCopyright}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    photoHtml = `
+                        <div class="media-canvas" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V6.75z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span style="color: var(--text-muted); font-size: 11px; font-family: 'JetBrains Mono';">NO VISUAL CONFIRMATION</span>
+                            <div class="media-overlay-details">
+                                <div>
+                                    <div class="overlay-title">${registration}</div>
+                                    <div class="overlay-subtitle">${aircraftType}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+
+                // Render AviationStack's free dynamic logo API if airline code exists
+                let airlineLogoHtml = '';
+                if (airlineLogoCode) {
+                    airlineLogoHtml = `
+                        <div class="airline-logo-container">
+                            <img src="https://pics.avs.io/200/50/${airlineLogoCode}.png" alt="Airline Logo" style="max-height: 35px; object-fit: contain;" onerror="this.style.display='none'">
+                        </div>
+                    `;
+                }
+
+                detailsDiv.innerHTML = `
+                    <div class="airnav-layout">
+                        ${photoHtml}
+                        
+                        <div class="airnav-info-panel">
+                            ${airlineLogoHtml}
+                            <div class="route-banner">
+                                <div class="route-endpoint">
+                                    <span class="info-label">Origin</span>
+                                    <span class="route-code">${routeOrigin}</span>
+                                    ${routeOriginCity ? `<span class="route-city">${routeOriginCity}</span>` : ''}
+                                </div>
+                                <div class="route-arrow">→</div>
+                                <div class="route-endpoint" style="text-align: right;">
+                                    <span class="info-label">Destination</span>
+                                    <span class="route-code">${routeDest}</span>
+                                    ${routeDestCity ? `<span class="route-city">${routeDestCity}</span>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="data-matrix-grid">
+                                <div class="matrix-cell">
+                                    <span class="info-label">Altitude</span>
+                                    <span class="info-value telemetry-val">${flight.altitude ? flight.altitude + ' m' : 'N/A'}</span>
+                                </div>
+                                <div class="matrix-cell">
+                                    <span class="info-label">Velocity</span>
+                                    <span class="info-value telemetry-val">${flight.velocity ? flight.velocity + ' km/h' : 'N/A'}</span>
+                                </div>
+                                <div class="matrix-cell">
+                                    <span class="info-label">Service Age</span>
+                                    <span class="info-value">${age}</span>
+                                </div>
+                                <div class="matrix-cell">
+                                    <span class="info-label">Engine Name</span>
+                                    <span class="info-value" style="font-family:'JetBrains Mono'; font-size:12px;">${engineInfo}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="map-container-${flight.icao24}" class="flight-map"></div>
+                `;
+
+                if (flight.latitude && flight.longitude) {
+                    setTimeout(async () => {
+                        const mapId = `map-container-${flight.icao24}`;
+                        const map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([flight.latitude, flight.longitude], 4);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 18
+                        }).addTo(map);
+
+                        const planeIcon = L.divIcon({
+                            html: `<svg style="transform: rotate(${flight.heading || 0}deg);" width="24" height="24" viewBox="0 0 24 24" fill="${varToString('--radar-green')}"><path d="M21,16V14L13,9V3.5A1.5,1.5 0 0,0 11.5,2A1.5,1.5 0 0,0 10,3.5V9L2,14V16L10,13.5V19L8,20.5V22L11.5,21L15,22V20.5L13,19V13.5L21,16Z"/></svg>`,
+                            className: 'custom-plane-icon',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+                        L.marker([flight.latitude, flight.longitude], {icon: planeIcon}).addTo(map);
+
+                        if (flight.firIcao) {
+                            try {
+                                const boundRes = await axios.get(`/api/boundary/${flight.firIcao}`);
+                                if (boundRes.data) {
+                                    L.geoJSON(boundRes.data, {
+                                        style: {
+                                            color: '#00ffcc',
+                                            weight: 1.5,
+                                            opacity: 0.5,
+                                            fillColor: '#00ffcc',
+                                            fillOpacity: 0.03
+                                        }
+                                    }).addTo(map);
+                                }
+                            } catch(e) { console.error("Boundary fetch failed", e); }
+                        }
+                    }, 50); 
+                }
+            } catch (err) {
+                detailsDiv.innerHTML = '<div class="state-message" style="padding:20px 0; color:#ff4444;">Visual telemetry stream failed.</div>';
+            }
+        }
+
+        function varToString(prop) {
+            return getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
+        }
+    </script>
+</body>
+</html>
