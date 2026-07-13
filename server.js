@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const PORT = 3000;
+// Fix: Allow Render to assign a dynamic port, fallback to 3000 locally
+const PORT = process.env.PORT || 3000;
 
 // Massive Global Operator Database (Commercial, Regional, & Cargo)
 const airlineDatabase = {
@@ -237,8 +238,7 @@ const server = http.createServer((req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`✈️  Live Global Telemetry Matrix Online: http://localhost:${PORT}`);
-});
-    console.log(`✈️  Live Global Telemetry Matrix Online: http://localhost:${PORT}`);
+// Fix: Bind to 0.0.0.0 so Render can detect the live port
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`✈️  Live Global Telemetry Matrix Online: http://0.0.0.0:${PORT}`);
 });
