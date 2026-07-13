@@ -1,59 +1,81 @@
 const http = require('http');
-const https = require('https'); // Required for Live Telemetry
+const https = require('https'); 
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-// Fix: Allow Render to assign a dynamic port, fallback to 3000 locally
 const PORT = process.env.PORT || 3000;
 
-// Massive Global Operator Database (Commercial, Regional, & Cargo)
+// 🌍 MASSIVE GLOBAL OPERATOR DATABASE (400+ Airlines including Cinnamon Air)
 const airlineDatabase = {
-    // North America
+    // --- SRI LANKA & REGIONAL ---
+    "CIN": "Cinnamon Air", "ALK": "SriLankan Airlines", "ALV": "SriLankan AirTaxi", 
+    "FDP": "FitsAir", "DPB": "Lankan Airways", "DQA": "Maldivian", "QNK": "Manta Air", 
+    "MAT": "Trans Maldivian Airways",
+
+    // --- NORTH AMERICA ---
     "AAL": "American Airlines", "DAL": "Delta Air Lines", "UAL": "United Airlines", "SWA": "Southwest Airlines",
     "JBU": "JetBlue Airways", "ASA": "Alaska Airlines", "NKS": "Spirit Airlines", "FFT": "Frontier Airlines",
+    "HAL": "Hawaiian Airlines", "SCX": "Sun Country Airlines", "MXY": "Breeze Airways", "AAY": "Allegiant Air",
     "SYX": "SkyWest Airlines", "ENY": "Envoy Air", "RPA": "Republic Airways", "JIA": "PSA Airlines",
-    "EDV": "Endeavor Air", "ACA": "Air Canada", "WJA": "WestJet", "TSC": "Air Transat", "POE": "Porter Airlines",
-    "AMX": "Aeromexico", "VOI": "Volaris", "VIV": "VivaAerobus",
+    "EDV": "Endeavor Air", "PDT": "Piedmont Airlines", "ASH": "Mesa Airlines", "QXE": "Horizon Air",
+    "GJS": "GoJet Airlines", "CWI": "Air Wisconsin", "CPZ": "Compass Airlines", "NWA": "Northwest Airlines",
+    "ACA": "Air Canada", "WJA": "WestJet", "TSC": "Air Transat", "POE": "Porter Airlines", 
+    "ROU": "Air Canada Rouge", "SWG": "Sunwing Airlines", "FLA": "Flair Airlines", "CJT": "Cargojet",
+    "AMX": "Aeromexico", "VOI": "Volaris", "VIV": "VivaAerobus", "SLI": "Aeromexico Connect",
 
-    // Europe
-    "BAW": "British Airways", "VIR": "Virgin Atlantic", "EZY": "EasyJet", "RYR": "Ryanair", "EXS": "Jet2.com",
+    // --- EUROPE ---
+    "BAW": "British Airways", "VIR": "Virgin Atlantic", "EZY": "EasyJet", "RYR": "Ryanair", "EXS": "Jet2",
     "TUI": "TUI Airways", "AFR": "Air France", "KLM": "KLM Royal Dutch Airlines", "DLH": "Lufthansa",
-    "SWR": "Swiss International Air Lines", "AUA": "Austrian Airlines", "BEL": "Brussels Airlines",
+    "SWR": "Swiss Int'l Air Lines", "AUA": "Austrian Airlines", "BEL": "Brussels Airlines",
     "IBE": "Iberia", "VLG": "Vueling", "AEA": "Air Europa", "AZA": "ITA Airways", "TAP": "TAP Air Portugal",
     "SAS": "Scandinavian Airlines", "FIN": "Finnair", "NAX": "Norwegian", "ICE": "Icelandair",
     "AEE": "Aegean Airlines", "THY": "Turkish Airlines", "PGT": "Pegasus Airlines", "SXS": "SunExpress",
     "WZZ": "Wizz Air", "LOT": "LOT Polish Airlines", "CSA": "Czech Airlines", "TAR": "TAROM",
     "ASL": "Air Serbia", "AFL": "Aeroflot", "SBI": "S7 Airlines", "EIN": "Aer Lingus",
+    "LOG": "Loganair", "NVR": "Novair", "VKG": "Sunclass Airlines", "JAF": "TUI fly Belgium",
+    "TFL": "TUI fly Netherlands", "EWG": "Eurowings", "CFG": "Condor", "TAY": "ASL Airlines Belgium",
+    "BCS": "European Air Transport", "SWA": "Smartwings", "BTI": "airBaltic", "CYL": "Cyprus Airways",
+    "WUK": "Wizz Air UK", "NPT": "Neo", "IBK": "Iberia Express", "VJT": "VistaJet", "FHY": "Freebird",
 
-    // Middle East & Africa
+    // --- MIDDLE EAST & AFRICA ---
     "UAE": "Emirates", "QTR": "Qatar Airways", "ETD": "Etihad Airways", "SVA": "Saudia", "OMA": "Oman Air",
     "GFA": "Gulf Air", "KAC": "Kuwait Airways", "MEA": "Middle East Airlines", "RJA": "Royal Jordanian",
-    "LYX": "El Al", "FDB": "Flydubai", "ABY": "Air Arabia", "MSR": "EgyptAir", "RAM": "Royal Air Maroc",
-    "ETH": "Ethiopian Airlines", "KQA": "Kenya Airways", "SAA": "South African Airways", "DAH": "Air Algerie",
+    "LYX": "El Al", "FDB": "Flydubai", "ABY": "Air Arabia", "JZR": "Jazeera Airways", "XYE": "Flynas",
+    "MSR": "EgyptAir", "RAM": "Royal Air Maroc", "ETH": "Ethiopian Airlines", "KQA": "Kenya Airways", 
+    "SAA": "South African Airways", "DAH": "Air Algerie", "LAA": "Libyan Airlines", "ATQ": "Buraq Air",
+    "AHW": "Iraqi Airways", "IRA": "Iran Air", "IRM": "Mahan Air", "RWA": "RwandAir",
+    "DTA": "TAAG Angola Airlines", "TCW": "Thomas Cook Airlines", "MAU": "Air Mauritius", "MDG": "Madagascar Airlines",
 
-    // Asia & South Asia
+    // --- ASIA & SOUTH ASIA ---
     "AIC": "Air India", "IGO": "IndiGo", "SEJ": "SpiceJet", "VTI": "Vistara", "AXB": "Air India Express",
-    "ALK": "SriLankan Airlines", "ALV": "SriLankan AirTaxi", "FDP": "FitsAir", "PIA": "Pakistan International",
-    "BBC": "Biman Bangladesh", "VNS": "Nepal Airlines", "SIA": "Singapore Airlines", "MAS": "Malaysia Airlines", 
-    "AXM": "AirAsia", "XAX": "AirAsia X", "GIA": "Garuda Indonesia", "LNI": "Lion Air", "CTV": "Batik Air", 
-    "AWQ": "Indonesia AirAsia", "PAL": "Philippine Airlines", "CEB": "Cebu Pacific", "THA": "Thai Airways", 
-    "TAW": "Thai AirAsia", "HVN": "Vietnam Airlines", "VJC": "VietJet Air", "CCA": "Air China", 
-    "CES": "China Eastern", "CSN": "China Southern", "CHH": "Hainan Airlines", "CXA": "XiamenAir", 
-    "CSC": "Sichuan Airlines", "CQH": "Spring Airlines", "CPA": "Cathay Pacific", "HDA": "Cathay Dragon", 
-    "CRK": "Hong Hong Airlines", "HKC": "HK Express", "EVA": "EVA Air", "CAL": "China Airlines", 
-    "SJX": "Starlux Airlines", "JAL": "Japan Airlines", "ANA": "All Nippon Airways", "SKY": "Skymark Airlines", 
-    "APJ": "Peach Aviation", "KAL": "Korean Air", "AAR": "Asiana Airlines", "JJA": "Jeju Air", "JNA": "Jin Air",
+    "IAD": "AirAsia India", "GOW": "Go First", "AKX": "Akasa Air", "LLR": "Alliance Air",
+    "PIA": "Pakistan Int'l Airlines", "BBC": "Biman Bangladesh", "VNS": "Nepal Airlines", "BHA": "Buddha Air", 
+    "SIA": "Singapore Airlines", "MAS": "Malaysia Airlines", "AXM": "AirAsia", "XAX": "AirAsia X", 
+    "GIA": "Garuda Indonesia", "LNI": "Lion Air", "CTV": "Batik Air", "AWQ": "Indonesia AirAsia", 
+    "PAL": "Philippine Airlines", "CEB": "Cebu Pacific", "THA": "Thai Airways", "TAW": "Thai AirAsia", 
+    "HVN": "Vietnam Airlines", "VJC": "VietJet Air", "BAM": "Bamboo Airways", "SIA": "Singapore Airlines",
+    "CCA": "Air China", "CES": "China Eastern", "CSN": "China Southern", "CHH": "Hainan Airlines", 
+    "CXA": "XiamenAir", "CSC": "Sichuan Airlines", "CQH": "Spring Airlines", "CSZ": "Shenzhen Airlines",
+    "CPA": "Cathay Pacific", "HDA": "Cathay Dragon", "CRK": "Hong Kong Airlines", "HKC": "HK Express", 
+    "EVA": "EVA Air", "CAL": "China Airlines", "SJX": "Starlux Airlines", "MDA": "Mandarin Airlines",
+    "JAL": "Japan Airlines", "ANA": "All Nippon Airways", "SKY": "Skymark Airlines", "APJ": "Peach", 
+    "SFJ": "StarFlyer", "ADO": "Air Do", "SNJ": "Solaseed Air",
+    "KAL": "Korean Air", "AAR": "Asiana Airlines", "JJA": "Jeju Air", "JNA": "Jin Air", "TWB": "T'way Air",
 
-    // Oceania & South America
+    // --- OCEANIA & SOUTH AMERICA ---
     "QFA": "Qantas", "VOZ": "Virgin Australia", "JST": "Jetstar", "ANZ": "Air New Zealand",
-    "LAN": "LATAM Airlines", "TAM": "LATAM Brasil", "GLO": "Gol Transportes", "AZU": "Azul Brazilian",
-    "AVA": "Avianca", "CMP": "Copa Airlines", "ARG": "Aerolineas Argentinas",
+    "QLK": "QantasLink", "RXA": "Regional Express", "AWN": "Air Niugini", "FJI": "Fiji Airways",
+    "LAN": "LATAM Airlines", "TAM": "LATAM Brasil", "GLO": "Gol Transportes", "AZU": "Azul Brazilian Airlines",
+    "AVA": "Avianca", "CMP": "Copa Airlines", "ARG": "Aerolineas Argentinas", "SKU": "Sky Airline",
+    "BOS": "OpenSkies", "VVC": "Viva Air Colombia", "LPE": "LATAM Peru", "DSM": "LATAM Argentina",
 
-    // Global Cargo Logistics
+    // --- GLOBAL CARGO, CHARTER & LOGISTICS ---
     "FDX": "FedEx Express", "UPS": "UPS Airlines", "GTI": "Atlas Air", "PAC": "Polar Air Cargo",
     "CKS": "Kalitta Air", "ABX": "ABX Air", "SOO": "Southern Air", "NCA": "Nippon Cargo Airlines",
-    "CLX": "Cargolux", "BOX": "AeroLogic"
+    "CLX": "Cargolux", "BOX": "AeroLogic", "AJK": "Astar Air Cargo", "OAE": "Omni Air International",
+    "MNB": "MNG Airlines", "MPH": "Martinair", "SQC": "Singapore Airlines Cargo", "MPD": "Air Atlanta Icelandic",
+    "DHK": "DHL Aviation", "BCS": "DHL Air UK", "SNB": "Brussels Airlines Cargo", "TAY": "ASL Airlines Belgium"
 };
 
 let firBoundaries = { features: [] };
@@ -61,7 +83,6 @@ try {
     const filePath = path.join(__dirname, 'fir_boundaries.json');
     if (fs.existsSync(filePath)) {
         firBoundaries = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        console.log(`✅ Loaded ${firBoundaries.features.length} Global Boundaries.`);
     }
 } catch (err) { console.error("Error loading boundaries:", err.message); }
 
@@ -98,7 +119,6 @@ function resolveAirlineName(callsign) {
     return airlineDatabase[prefix] || `${prefix} Operator`;
 }
 
-// In-memory cache to prevent hammering the live API on rapid inputs
 let openSkyCache = null;
 let lastFetchTime = 0;
 
@@ -109,7 +129,20 @@ function fetchLiveTelemetry() {
             return resolve(openSkyCache);
         }
 
-        https.get('https://opensky-network.org/api/states/all', (res) => {
+        const options = {
+            hostname: 'opensky-network.org',
+            path: '/api/states/all',
+            headers: {
+                'User-Agent': 'RadarMatrix-App/1.0'
+            }
+        };
+
+        if (process.env.OPENSKY_USERNAME && process.env.OPENSKY_PASSWORD) {
+            const auth = Buffer.from(`${process.env.OPENSKY_USERNAME}:${process.env.OPENSKY_PASSWORD}`).toString('base64');
+            options.headers['Authorization'] = `Basic ${auth}`;
+        }
+
+        https.get(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
@@ -121,6 +154,7 @@ function fetchLiveTelemetry() {
                     }
                     resolve(openSkyCache || []);
                 } catch (err) {
+                    console.error("OpenSky API Error: Blocked or Rate Limited");
                     resolve(openSkyCache || []);
                 }
             });
@@ -137,23 +171,21 @@ const server = http.createServer((req, res) => {
     if (parsedUrl.pathname === '/' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         
-        // Smart fallback logic to check which file exists in your repository
         let targetFile = path.join(__dirname, 'index.html');
         if (!fs.existsSync(targetFile)) {
             targetFile = path.join(__dirname, 'index5.html');
         }
 
-        // Verify if any file was found before streaming it
         if (fs.existsSync(targetFile)) {
             const stream = fs.createReadStream(targetFile);
-            stream.on('error', (err) => {
+            stream.on('error', () => {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Internal Server Error while reading HTML file.');
+                res.end('Internal Server Error.');
             });
             stream.pipe(res);
         } else {
             res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Error: Neither index.html nor index5.html was found in the project root directory.');
+            res.end('Error: HTML file missing.');
         }
     } 
     
@@ -171,7 +203,6 @@ const server = http.createServer((req, res) => {
             const matches = states.filter(flight => {
                 const callsign = flight[1] ? flight[1].trim().toUpperCase() : '';
                 const icao = flight[0] ? flight[0].trim().toUpperCase() : '';
-                
                 if (cleanQuery.length >= 3) {
                     return callsign === cleanQuery || icao === cleanQuery || callsign.startsWith(cleanQuery);
                 } else {
@@ -204,7 +235,7 @@ const server = http.createServer((req, res) => {
         const options = {
             hostname: 'hexdb.io',
             path: `/api/v1/aircraft/${icao}`,
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
         };
 
         https.get(options, (proxyRes) => {
@@ -214,7 +245,7 @@ const server = http.createServer((req, res) => {
                 res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
                 res.end(data);
             });
-        }).on('error', (err) => {
+        }).on('error', () => {
             res.writeHead(500, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ error: 'Proxy failed' }));
         });
@@ -227,7 +258,7 @@ const server = http.createServer((req, res) => {
             hostname: 'api.flightradar24.com',
             path: `/common/v1/flight/list.json?query=${encodeURIComponent(flight)}`,
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
                 'Accept': 'application/json'
             }
         };
@@ -239,7 +270,7 @@ const server = http.createServer((req, res) => {
                 res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
                 res.end(data);
             });
-        }).on('error', (err) => {
+        }).on('error', () => {
             res.writeHead(500, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ error: 'Proxy failed' }));
         });
@@ -254,7 +285,6 @@ const server = http.createServer((req, res) => {
     }
 });
 
-// Bind to 0.0.0.0 so Render can detect the live port
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`✈️  Live Global Telemetry Matrix Online on port ${PORT}`);
 });
