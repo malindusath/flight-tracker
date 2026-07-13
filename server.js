@@ -105,7 +105,6 @@ let lastFetchTime = 0;
 function fetchLiveTelemetry() {
     return new Promise((resolve) => {
         const NOW = Date.now();
-        // 15-second cache buffer strictly required for public unauthenticated endpoints
         if (openSkyCache && (NOW - lastFetchTime < 15000)) {
             return resolve(openSkyCache);
         }
@@ -122,7 +121,7 @@ function fetchLiveTelemetry() {
                     }
                     resolve(openSkyCache || []);
                 } catch (err) {
-                    resolve(openSkyCache || []); // Fallback on failure
+                    resolve(openSkyCache || []);
                 }
             });
         }).on('error', () => {
@@ -137,8 +136,25 @@ const server = http.createServer((req, res) => {
     // --- STATIC FILES ---
     if (parsedUrl.pathname === '/' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        // NOTE: Ensure your HTML file is named index5.html in the same directory, or change this to match your filename.
-        fs.createReadStream(path.join(__dirname, 'index5.html')).pipe(res);
+        
+        // Smart fallback logic to check which file exists in your repository
+        let targetFile = path.join(__dirname, 'index.html');
+        if (!fs.existsSync(targetFile)) {
+            targetFile = path.join(__dirname, 'index5.html');
+        }
+
+        // Verify if any file was found before streaming it
+        if (fs.existsSync(targetFile)) {
+            const stream = fs.createReadStream(targetFile);
+            stream.on('error', (err) => {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Internal Server Error while reading HTML file.');
+            });
+            stream.pipe(res);
+        } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Error: Neither index.html nor index5.html was found in the project root directory.');
+        }
     } 
     
     // --- SEARCH PROXY ---
@@ -182,7 +198,7 @@ const server = http.createServer((req, res) => {
         });
     } 
 
-    // --- AIRCRAFT PROXY (Bypasses HexDB CORS) ---
+    // --- AIRCRAFT PROXY ---
     else if (parsedUrl.pathname.startsWith('/api/aircraft/') && req.method === 'GET') {
         const icao = parsedUrl.pathname.split('/')[3];
         const options = {
@@ -204,7 +220,7 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // --- ROUTE PROXY (Bypasses Flightradar24 CORS & Restrictions) ---
+    // --- ROUTE PROXY ---
     else if (parsedUrl.pathname === '/api/routes' && req.method === 'GET') {
         const flight = parsedUrl.query.flight || '';
         const options = {
@@ -238,7 +254,7 @@ const server = http.createServer((req, res) => {
     }
 });
 
-// Fix: Bind to 0.0.0.0 so Render can detect the live port
+// Bind to 0.0.0.0 so Render can detect the live port
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`✈️  Live Global Telemetry Matrix Online: http://0.0.0.0:${PORT}`);
+    console.log(`✈️  Live Global Telemetry Matrix Online on port ${PORT}`);
 });
